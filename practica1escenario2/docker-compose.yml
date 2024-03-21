@@ -1,7 +1,9 @@
+version: '3'
+
 volumes:
   files:
     driver: local
-  mysql:
+  mysql_master:
     driver: local
   mysql_slave:
     driver: local
@@ -30,7 +32,7 @@ services:
     networks:
       - mynet
     ports:
-      - 8090-8091:8080
+      - 8080-8081:8080
     depends_on:
       - mariadb_slave
       - redis
@@ -71,18 +73,16 @@ services:
       - MYSQL_PASSWORD=owncloud
       - MYSQL_DATABASE=owncloud
       - MARIADB_AUTO_UPGRADE=1
-    command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M"]
+    command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M", "--server-id=1", "--log-bin=master-bin", "--log-bin-index=master-bin.index"]
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=owncloud"]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
-      - mysql:/var/lib/mysql
-      # - ./50-server_master.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf
-      - ./50-server_master.cnf:/etc/my.cnf
+      - mysql_master:/var/lib/mysql
+      - ./50-server_master.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf
       - ./sqlmaster:/docker-entrypoint-initdb.d
-
 
   mariadb_slave:
       image: mariadb
@@ -92,7 +92,7 @@ services:
       restart: always
       environment:
         - MYSQL_ROOT_PASSWORD=owncloud
-      command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M"]
+      command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M", "--server-id=2", "--relay-log=slave-relay-bin", "--relay-log-index=slave-relay-bin.index", "--log-bin=slave-bin", "--log-bin-index=slave-bin.index", "--relay-log-recovery=1", "--slave-net-timeout=60"]
       healthcheck:
         test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=owncloud"]
         interval: 10s
@@ -100,8 +100,7 @@ services:
         retries: 5
       volumes:
         - mysql_slave:/var/lib/mysql
-        # - ./50-server_slave.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf
-        - ./50-server_slave.cnf:/etc/my.cnf
+        - ./50-server_slave.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf
         - ./sqlslave:/docker-entrypoint-initdb.d
       depends_on:
         - mariadb_master
@@ -162,7 +161,6 @@ services:
       - PHPLDAPADMIN_HTTPS=false
     depends_on:
       - openldap
-
 
 networks:
   mynet:

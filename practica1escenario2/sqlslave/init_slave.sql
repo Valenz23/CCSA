@@ -1,7 +1,5 @@
 STOP SLAVE;
 
--- SET GLOBLAL server_id=2;
-
 CHANGE MASTER TO
   MASTER_HOST='mariadb_master',
   MASTER_USER='replication_user',
@@ -10,3 +8,4 @@ CHANGE MASTER TO
   MASTER_CONNECT_RETRY=10;
   
 START SLAVE;
+
