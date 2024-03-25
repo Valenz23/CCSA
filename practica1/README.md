@@ -1,28 +1,132 @@
 # CCSA: Práctica 1
 
-#### Autor: ```Pablo Valenzuela Álvarez```
+#### Autor: ``Pablo Valenzuela Álvarez``
 
-## Entorno de desarrollo utilizado
-Para la realización de esta práctica se usará el servicio de *``Docker``* (versión 4.28.0), *```docker compose```* para hacer el despliegue y *```VSCode```* (versión 1.87.2) para editar el fichero correspondiente al compose. Por último, el sistema operativo que usaré es *``Windows 11``*. 
+## 1. Entorno de desarrollo utilizado
+Para la realización de esta práctica se usará el servicio de ``Docker`` (versión 4.28.0), ``docker compose`` para hacer el despliegue y ``VSCode`` (versión 1.87.2) para editar el fichero correspondiente al compose. Por último, el sistema operativo que usaré es ``Windows 11``. 
 
-## Descripción de la práctica
+## 2. Descripción de la práctica
 
 El objetivo de la práctica es desplegar un servicio **owncloud** siguiendo una de las arquitecturas propuestas.
 
 En mi caso, se seguirá la estructura propuesta para el escenario segundo, donde tenemos que desplegar un servicio owncloud que contenga los siguientes elementos:
-1. Balanceo de carga, para el cual usaremos **HAProxy**.
-2. Servidor web **owncloud**.
+1. Servidor web **owncloud**.
+2. Balanceador de carga, para el cual usaremos **HAProxy**.
 3. **MariaDB**.
 4. **Redis**.
 5. Servicio de autenticación de usuario **LDAP**.
 
 También se pide que se realice **replicación** sobre alguno de los microservicios expuestos anteriormente (owncloud, mariaDB o LDAP).
 
-## Servicios desplegados y su configuración
+## 3. Servicios desplegados y su configuración
 
-## Conclusiones
+Para el despliegue se ha usado el siguiente fichero ([compose.yaml](compose.yaml)), que contiene los microservicios necesarios para completar los objetivos de la práctica. Las variables de entorno que se usan durante el proceso de despliegue se ubican en el fichero ([.env](.env)). 
 
-## Referencias
+A continuación, vamos a explicar la configuración que hemos dado a cada uno de los microservicios.
+
+### 3.1. Servidor web owncloud (minube)
+
+He decidido llamar al servicio de owncloud: **``minube``**. 
+
+Como se puede ver en la siguiente imagen, esta diseñado para replicarse **tres veces** siguiendo una asignación de puertos del **8080** al **8082**. El servicio depende de otros dos: ``mariadb_slave`` y ``redis``, es decir, tiene que esperar a que estos dos servicios se construyan para poder funcionar bien. También usa el **volumen** de ``datos`` para persistir los archivos que los usuario suban a la plataforma.
+
+![conf-owncloud1](img/conf-owncloud1.png)
+
+El valor de las **variables de entorno** usadas en la configuración de este servicio se puede ver en la siguiente imagen. Las variables muestran **la versión del servicio, el dominio, los usuarios y contraseñas tanto de owncloud como de la base de datos, ...** todo lo necesario para que el servicio funcione. 
+
+![conf-owncloud2](img/conf-owncloud2.png)
+
+
+**NOTA**: He decicido mantener el mismo usuario y la misma contraseña para todos los servicios que la requieran, aunque se recomienda que sean distintas.
+
+### 3.2. Balanceador de carga HAProxy
+
+Para el balanceador de carga se ha proporicionado un fichero de configuración [haproxy.cfg](haconfig/haproxy.cfg). Se le asigna el puerto **80**, donde se encargará de distribuir la carga entre los servicios de owncloud, y el puerto **8404**, que usaremos para monitorizar. Por último, este servicio espera a que ``minube`` (**owncloud**) este activo para funcionar.
+
+![conf-haproxy1](img/conf-haproxy1.png)
+
+En esta imagen se puede ver el contenido del fichero de configuración [haproxy.cfg](haconfig/haproxy.cfg). Destacar las últimas líneas donde podemos configurar el comportamiento que tendrá el backend cuando empiece a recibir peticiones de los clientes, en este caso y como modo de prueba, se asigna un máximo de cinco conexiones concurrentes a cada réplica.
+
+![conf-haproxy2](img/conf-haproxy2.png)
+
+
+### 3.2. Base de datos MariaDB
+
+En la base de datos se ha usado una estrategia maestro-esclavo, de esta manera todo cambio ocurrido en la base de datos "maestro" se replica a la "esclavo". Para ello necesitaremos de dos servicios **MariaDB** y la configuración de estos es la siguiente:
+
+#### 3.2.1. Maestro
+
+Este servicio usa un fichero de configuración [init_master.sql](sqlmaster/init_master.sql) donde activaremos la replicación. También se le ha vinculado el volumen de ``mysql_master`` donde se guardara la base de datos.
+
+Un dato importante que se puede observar en la línea *"comand"* de la siguiente foto, es la asignación del **server-id**, es importante que este número sea distinto al del esclavo para que ambos servicios funcionen correctamente.
+
+![conf-mariadb-master1](img/conf-mariadb-master1.png)
+
+Contenido de las variables de entorno para MariaDB ([.env](.env)).
+
+![conf-mariadb](img/conf-mariadb.png)
+
+Contenido del fichero [init_master.sql](sqlmaster/init_master.sql).
+
+![conf-mariadb-master2](img/conf-mariadb-master2.png)
+
+#### 3.2.1. Esclavo
+
+Al igual que el anterior este servicio cuenta con un fichero de configuración [init_slave.sql](sqlslave/init_slave.sql), donde se le indica la base de datos que debe replicar. También tiene vinvulado su propio volumen ``mysql_slave``.
+
+Como en el caso anterior, también hay que especificar un id para el esclavo. Como se ha podido observar, el id del **maestro** es **1** y el de el **esclavo** **2**.
+
+![conf-mariadb-slave1](img/conf-mariadb-slave1.png)
+
+Contenido del fichero [init_slave.sql](sqlslave/init_slave.sql).
+
+![conf-mariadb-slave2](img/conf-mariadb-slave2.png)
+
+### 3.3. Redis
+
+La configuración del servicio ``redis`` tiene una configuración preeterminada, se le incluye el volumen con el mismo nombre (``redis``).
+
+![conf-redis](img/conf-redis.png)
+
+### 3.4. Servicio de autenticación OpenLDAP + phpLDAPmin
+
+El servicio de autenticación consta de dos contenedores: ``OpenLDAP``, que es un servicio de directorio de codigo abierto con amplio de soporte de la comunidad, y ``phpLDAPmin`` con el que podemos gestionar este directorio desde una interfaz web.
+
+#### 3.4.1. OpenLDAP
+
+``OpenLDAP`` utiliza el puerto **389** para acceder a los directorios de manera predeterminada, y el puerto **636** para proporcionar una capa de seguridad entre la comunicación cliente-servidor. Nosotros haremos uso del primero, pero no esta mal dejarlo definido por si queremos usarlo en el futuro.
+
+También hay que copiar varios ficheros situados en la carpeta *data*, dicha carpeta se crea automáticamente al construir el servicio por lo que no tenemos que preocuparno por ella.
+
+![conf-ldap1](img/conf-ldap1.png)
+
+Contenido de las variables de entorno para ``OpenLDAP`` ([.env](.env)). En este fichero es importante, definir bien los datos de la *empresa* que son los que tenemos que usar para loguearnos y poder crear usuario en el servicio ``phpLDAPmin``
+
+![conf-ldap2](img/conf-ldap2.png)
+
+#### phpLADPmin
+
+En la configuración del servicio ``phpLDAPmin`` hay que cambiar el puerto de acceso, porque es que us´r el predeterminado esta siendo ocupado por el servicio ``haproxy``. También hay configurarlo para que se inicie despues de haber activado el directorio ``OpenLDAP`` que gestionaremos con él.
+
+**NOTA**: Para loguearno en este servicio para poder añadir un usuario o grupo ... tendremos que usar el usuario: *cn=admin,dc=minube,dc=com*.
+
+![conf-ldap3](img/conf-ldap3.png)
+
+Contenido de las variables de entorno para ``phpLDAPmin`` ([.env](.env)). 
+
+![conf-ldap4](img/conf-ldap4.png)
+
+## 4. Funcionamiento del servicio
+
+## 5. Conclusiones
+
+## 6. Referencias
 
 #### Guión de prácticas
 https://github.com/ccano/cc2223/blob/main/practice1/README.md
+
+
+https://mariadb.com/kb/en/setting-up-replication/
+
+
+https://www.openldap.org/

@@ -1,92 +1,82 @@
 services:
 
-  haproxy:                                            # balanceador de carga
-    image: haproxytech/haproxy-alpine
-    container_name: haproxy
-    networks:
-      - red
-    volumes:
-      - ./haconfig:/usr/local/etc/haproxy:ro          # copiamos el fichero de confuguracion local al contenedor
-    restart: always                                   # se reinicia en caso de que se detenga
-    ports:
-      - 80:80
-      - 8404:8404
-    depends_on:
-      - minube                                      # hacemos que dependa del servicio owncloud, que se despliegue despues de este
-
-  minube:
+  minube:                                          
     image: owncloud/server:${OWNCLOUD_VERSION} 
     restart: always
-    networks:
-      - red
     ports:
-      - 8080-8082:8080                            # rango de puertos para que sean usados en las replicas
+      - 8080-8082:8080                          
     depends_on:
       - mariadb_slave
       - redis
-    environment:                                                  # configuracion del environment
+    environment:                                                 
       - OWNCLOUD_DOMAIN=${OWNCLOUD_DOMAIN}
       - OWNCLOUD_TRUSTED_DOMAINS=${OWNCLOUD_TRUSTED_DOMAINS}
-      - OWNCLOUD_DB_TYPE=mysql
-      - OWNCLOUD_DB_NAME=minube
-      - OWNCLOUD_DB_USERNAME=admin
-      - OWNCLOUD_DB_PASSWORD=1234
-      - OWNCLOUD_DB_HOST=mariadb_master
-      - OWNCLOUD_ADMIN_USERNAME=${ADMIN_USERNAME}
-      - OWNCLOUD_ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - OWNCLOUD_MYSQL_UTF8MB4=true
-      - OWNCLOUD_REDIS_ENABLED=true
-      - OWNCLOUD_REDIS_HOST=redis
+      - OWNCLOUD_DB_TYPE=${OWNCLOUD_DB_TYPE}
+      - OWNCLOUD_DB_NAME=${OWNCLOUD_DB_NAME}
+      - OWNCLOUD_DB_USERNAME=${OWNCLOUD_DB_USERNAME}
+      - OWNCLOUD_DB_PASSWORD=${OWNCLOUD_DB_PASSWORD}
+      - OWNCLOUD_DB_HOST=${OWNCLOUD_DB_HOST}
+      - OWNCLOUD_ADMIN_USERNAME=${OWNCLOUD_ADMIN_USERNAME}
+      - OWNCLOUD_ADMIN_PASSWORD=${OWNCLOUD_ADMIN_PASSWORD}
+      - OWNCLOUD_MYSQL_UTF8MB4=${OWNCLOUD_MYSQL_UTF8MB4}
+      - OWNCLOUD_REDIS_ENABLED=${OWNCLOUD_REDIS_ENABLED}
+      - OWNCLOUD_REDIS_HOST=${OWNCLOUD_REDIS_HOST}
     healthcheck:
       test: ["CMD", "/usr/bin/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 5
     volumes:
-      - datos:/mnt/data                             # asignamos el volumen de owncloud
+      - datos:/mnt/data                           
     deploy:
-      replicas: 3                                   # y asignamos que haga tres replicas del servicio
+      replicas: 3                                  
+
+  haproxy:                                           
+    image: haproxytech/haproxy-alpine
+    container_name: haproxy
+    volumes:
+      - ./haconfig:/usr/local/etc/haproxy:ro          
+    restart: always                                   
+    ports:
+      - 80:80
+      - 8404:8404
+    depends_on:
+      - minube                                      
 
   mariadb_master:
     image: mariadb
     container_name: db_master
-    networks:
-      - red
     restart: always
-    environment:                                  # configuracion del environment, tiene que coincidir con el de owncloud
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_USER=admin
-      - MYSQL_PASSWORD=1234
-      - MYSQL_DATABASE=minube
-      - MARIADB_AUTO_UPGRADE=1
+    environment:                                
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MARIADB_AUTO_UPGRADE=${MARIADB_AUTO_UPGRADE}
     command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M", "--server-id=1", "--log-bin=master-bin", "--log-bin-index=master-bin.index"]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=root"]
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
-      - mysql_master:/var/lib/mysql                                       # vinculamos el volumen de la bd 
-      - ./50-server_master.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf    # y los archivos de configuracion
+      - mysql_master:/var/lib/mysql                                        
       - ./sqlmaster:/docker-entrypoint-initdb.d
 
   mariadb_slave:
     image: mariadb
     container_name: db_slave
-    networks:
-      - red
     restart: always
     environment:
-      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     command: ["--max-allowed-packet=128M", "--innodb-log-file-size=64M", "--server-id=2", "--relay-log=slave-relay-bin", "--relay-log-index=slave-relay-bin.index", "--log-bin=slave-bin", "--log-bin-index=slave-bin.index", "--relay-log-recovery=1", "--slave-net-timeout=60"]
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=owncloud"]
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "--password=${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
       - mysql_slave:/var/lib/mysql                                    
-      - ./50-server_slave.cnf:/etc/mysql/mariadb.conf.d/50-server.cnf
       - ./sqlslave:/docker-entrypoint-initdb.d
     depends_on:
       - mariadb_master
@@ -94,8 +84,6 @@ services:
   redis:
     image: redis
     container_name: redis
-    networks:
-      - red
     restart: always
     command: ["--databases", "1"]
     healthcheck:
@@ -110,8 +98,6 @@ services:
     image: osixia/openldap:latest
     container_name: openldap
     hostname: openldap
-    networks:
-      - red
     ports: 
       - "389:389"
       - "636:636"
@@ -120,45 +106,33 @@ services:
       - ./data/ldapvol/slapd/database:/var/lib/ldap
       - ./data/slapd/config:/etc/ldap/slapd.d
     environment: 
-      - LDAP_ORGANISATION=minube
-      - LDAP_DOMAIN=minube.com
-      - LDAP_ADMIN_USERNAME=admin
-      - LDAP_ADMIN_PASSWORD=1234
-      - LDAP_CONFIG_PASSWORD=configpass
-      - LDAP_BASE_DN=dc=minube,dc=com
-      - LDAP_TLS_CRT_FILENAME=server.crt
-      - LDAP_TLS_KEY_FILENAME=server.key
-      - LDAP_TLS_CA_CRT_FILENAME=minube.com.ca.crt
-      - LDAP_READONLY_USER=true
-      - LDAP_READONLY_USER_USERNAME=user-ro
-      - LDAP_READONLY_USER_PASSWORD=ro_pass
-
+      - LDAP_ORGANISATION=${LDAP_ORGANISATION}
+      - LDAP_DOMAIN=${LDAP_DOMAIN}
+      - LDAP_ADMIN_USERNAME=${LDAP_ADMIN_USERNAME}
+      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD}
+      - LDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD}
+      - LDAP_BASE_DN=${LDAP_BASE_DN}
+      - LDAP_TLS_CRT_FILENAME=${LDAP_TLS_CRT_FILENAME}
+      - LDAP_TLS_KEY_FILENAME=${LDAP_TLS_KEY_FILENAME}
+      - LDAP_TLS_CA_CRT_FILENAME=${LDAP_TLS_CA_CRT_FILENAME}
+      - LDAP_READONLY_USER=${LDAP_READONLY_USER}
+      - LDAP_READONLY_USER_USERNAME=${LDAP_READONLY_USER_USERNAME}
+      - LDAP_READONLY_USER_PASSWORD=${LDAP_READONLY_USER_PASSWORD}
+      
   phpldapadmin:
     image: osixia/phpldapadmin:latest
     container_name: phpldapadmin
-    networks:
-      - red
     hostname: phpldapadmin
     ports: 
       - "7777:80"
     environment: 
-      - PHPLDAPADMIN_LDAP_HOSTS=openldap
-      - PHPLDAPADMIN_HTTPS=false
+      - PHPLDAPADMIN_LDAP_HOSTS=${PHPLDAPADMIN_LDAP_HOSTS}
+      - PHPLDAPADMIN_HTTPS=${PHPLDAPADMIN_HTTPS}
     depends_on:
       - openldap
 
-networks:
-  red:                
-    driver: bridge  # controlador predeterminador para la red. Crea una red privada en el host y conecta todos los contenedores a esta red
-
 volumes:
-  datos:            # volumen que usaremos para la guardar los ficheros de los usuarios de owncloud
-    driver: local   # controlador predeteminado para los volumenes. Indica que los datos del volumen se almacenaran localmente en el equipo del host
+  datos:          
   mysql_master:
-    driver: local
   mysql_slave:
-    driver: local
   redis:
-    driver: local
-
-    
