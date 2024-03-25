@@ -3,7 +3,7 @@
 #### Autor: ``Pablo Valenzuela Álvarez``
 
 ## 1. Entorno de desarrollo utilizado
-Para la realización de esta práctica se usará el servicio de ``Docker`` (versión 4.28.0), ``docker compose`` para hacer el despliegue y ``VSCode`` (versión 1.87.2) para editar el fichero correspondiente al compose. Por último, el sistema operativo que usaré es ``Windows 11``. 
+Para la realización de esta práctica se usará el servicio de *Docker (4.28.0)*, *docker compose* para hacer el despliegue y *VSCode (1.87.2)* para editar el fichero correspondiente al compose. Por último, el sistema operativo que usaré es *Windows 11*. 
 
 ## 2. Descripción de la práctica
 
@@ -28,11 +28,11 @@ A continuación, vamos a explicar la configuración que hemos dado a cada uno de
 
 He decidido llamar al servicio de owncloud: **``minube``**. 
 
-Como se puede ver en la siguiente imagen, esta diseñado para replicarse **tres veces** siguiendo una asignación de puertos del **8080** al **8082**. El servicio depende de otros dos: ``mariadb_slave`` y ``redis``, es decir, tiene que esperar a que estos dos servicios se construyan para poder funcionar bien. También usa el **volumen** de ``datos`` para persistir los archivos que los usuario suban a la plataforma.
+Como se puede ver en la siguiente imagen, esta diseñado para replicarse **tres veces** siguiendo una asignación de puertos del **8080** al **8082**. El servicio depende de otros dos: ``mariadb_slave`` y ``redis``, es decir, tiene que esperar a que estos dos servicios se construyan para poder funcionar bien. También usa el **volumen** de ``datos`` para persistir los archivos que los usuarios suban a la plataforma.
 
 ![conf-owncloud1](img/conf-owncloud1.png)
 
-El valor de las **variables de entorno** usadas en la configuración de este servicio se puede ver en la siguiente imagen. Las variables muestran **la versión del servicio, el dominio, los usuarios y contraseñas tanto de owncloud como de la base de datos, ...** todo lo necesario para que el servicio funcione. 
+El valor de las **variables de entorno** usadas en la configuración de este servicio se puede ver en la siguiente imagen. Las variables muestran la versión del servicio, el dominio, los usuarios y contraseñas tanto de owncloud como de la base de datos, ... todo lo necesario para que el servicio funcione. 
 
 ![conf-owncloud2](img/conf-owncloud2.png)
 
@@ -52,17 +52,17 @@ En esta imagen se puede ver el contenido del fichero de configuración [haproxy.
 
 ### 3.2. Base de datos MariaDB
 
-En la base de datos se ha usado una estrategia maestro-esclavo, de esta manera todo cambio ocurrido en la base de datos "maestro" se replica a la "esclavo". Para ello necesitaremos de dos servicios **MariaDB** y la configuración de estos es la siguiente:
+En la base de datos se ha usado una estrategia **maestro-esclavo**, de esta manera todo cambio ocurrido en la base de datos "*maestro*" se replica a la "*esclavo*". Para ello necesitaremos de dos servicios **MariaDB** y la configuración de estos es la siguiente:
 
 #### 3.2.1. Maestro
 
-Este servicio usa un fichero de configuración [init_master.sql](sqlmaster/init_master.sql) donde activaremos la replicación. También se le ha vinculado el volumen de ``mysql_master`` donde se guardara la base de datos.
+Este servicio usa un fichero de configuración ([init_master.sql](sqlmaster/init_master.sql)) donde activaremos la replicación. También se le ha vinculado el volumen de ``mysql_master`` donde se guardara la base de datos.
 
-Un dato importante que se puede observar en la línea *"comand"* de la siguiente foto, es la asignación del **server-id**, es importante que este número sea distinto al del esclavo para que ambos servicios funcionen correctamente.
+Un dato importante que se puede observar en la línea *"comand"* de la siguiente foto, es la asignación del **server-id**, es importante que este número sea distinto al del *esclavo* para que ambos servicios funcionen correctamente.
 
 ![conf-mariadb-master1](img/conf-mariadb-master1.png)
 
-Contenido de las variables de entorno para MariaDB ([.env](.env)).
+Contenido de las variables de entorno para **MariaDB** ([.env](.env)).
 
 ![conf-mariadb](img/conf-mariadb.png)
 
@@ -72,7 +72,7 @@ Contenido del fichero [init_master.sql](sqlmaster/init_master.sql).
 
 #### 3.2.1. Esclavo
 
-Al igual que el anterior este servicio cuenta con un fichero de configuración [init_slave.sql](sqlslave/init_slave.sql), donde se le indica la base de datos que debe replicar. También tiene vinvulado su propio volumen ``mysql_slave``.
+Al igual que el anterior este servicio cuenta con un fichero de configuración ([init_slave.sql](sqlslave/init_slave.sql)), donde se le indica la base de datos que debe replicar. También tiene vinculado su propio volumen ``mysql_slave``.
 
 Como en el caso anterior, también hay que especificar un id para el esclavo. Como se ha podido observar, el id del **maestro** es **1** y el de el **esclavo** **2**.
 
@@ -84,7 +84,7 @@ Contenido del fichero [init_slave.sql](sqlslave/init_slave.sql).
 
 ### 3.3. Redis
 
-La configuración del servicio ``redis`` tiene una configuración preeterminada, se le incluye el volumen con el mismo nombre (``redis``).
+La configuración del servicio ``redis`` tiene una configuración predeterminada, donde se le incluye el volumen con el mismo nombre (``redis``).
 
 ![conf-redis](img/conf-redis.png)
 
@@ -106,9 +106,9 @@ Contenido de las variables de entorno para ``OpenLDAP`` ([.env](.env)). En este 
 
 #### phpLADPmin
 
-En la configuración del servicio ``phpLDAPmin`` hay que cambiar el puerto de acceso, porque es que us´r el predeterminado esta siendo ocupado por el servicio ``haproxy``. También hay configurarlo para que se inicie despues de haber activado el directorio ``OpenLDAP`` que gestionaremos con él.
+En la configuración del servicio ``phpLDAPmin`` hay que cambiar el puerto de acceso, porque el que usa por defecto esta siendo ocupado por el servicio ``haproxy``. También hay configurarlo para que se inicie después de haber activado el directorio ``OpenLDAP``.
 
-**NOTA**: Para loguearno en este servicio para poder añadir un usuario o grupo ... tendremos que usar el usuario: *cn=admin,dc=minube,dc=com*.
+**NOTA**: Para loguearnos en este servicio tendremos que usar el usuario: *cn=admin,dc=minube,dc=com*.
 
 ![conf-ldap3](img/conf-ldap3.png)
 
