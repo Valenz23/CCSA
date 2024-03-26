@@ -179,7 +179,15 @@ Como se puede observar, la base de datos que hemos definido anteriormente llamad
 
 ## 5. Conclusiones
 
+En esta práctica, hemos logrado desplegar con éxito un servicio de ownCloud utilizando una arquitectura basada en microservicios. Este despliegue incluye la configuración de varios servidorer web, un balanceador de carga, una base de datos MariaDB con replicación maestro-esclavo, un servicio Redis y un servicio de autenticación de usuarios LDAP.
 
+Durante el proceso de configuración nos hemos enfrentado diversos problemas, como fueron la configuración correcta de los servicios para que interactúen entre sí, la definición de las variables de entorno para configurar los servicios y la resolución de conflictos en los puertos asignando a cada servicio que lo requiera uno distinto.
+
+La replicación maestro-esclavo implementada en la base de datos MariaDB añade una capa de robustez y disponibilidad a nuestro sistema, permitiendo la redundancia de datos y la tolerancia a fallos en caso de que uno de los servidores falle.
+
+En cuanto a la integración con LDAP, hemos demostrado la capacidad de ownCloud para trabajar con servicios de autenticación externos, lo cual facilita la gestión de usuarios y mejora la seguridad del sistema al centralizar la autenticación.
+
+En resumen, esta práctica nos ha permitido adquirir y reforzar conocimientos en la implementación de servicios complejos en entornos de contenedores. Además, hemos explorado herramientas clave como Docker, Docker Compose, HAProxy y OpenLDAP, lo que nos ha proporcionado habilidades prácticas y conocimientos que son altamente relevantes en el mundo laboral actual. 
 
 ## 6. Referencias
 
