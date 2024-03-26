@@ -118,15 +118,71 @@ Contenido de las variables de entorno para ``phpLDAPmin`` ([.env](.env)).
 
 ## 4. Funcionamiento del servicio
 
+Para poner en funcionamiento el servicio tenemos que ejecutar el comando *docker compose up -d* en el directorio donde tengamos el archivo [compose.yaml](compose.yaml). **Nota**: Algunas veces es necesario ejecutarlo varias veces hasta que las replicas de owncloud se activen correctamente.
+
+![test1](img/test1.png)
+
+La imagen anterior muestra los puertos de acceso que hemos asignado para cada servicio:
+
+* **80**: Balanceador de carga de ``HAProxy``.
+* **8404**: Monitor de ``HAProxy``.
+* **389**: Acceso estandar de ``OpenLDAP``.
+* **696**: Acceso seguro de ``OpenLDAP``.
+* **7777**: Acceso a ``phpLDAPmin``.
+* **8080**: Servidor owncloud ``Minube-1``.
+* **8081**: Servidor owncloud ``Minube-3``.
+* **8082**: Servidor owncloud ``Minube-2``.
+
+### 4.1. Probando phpLDAPamin
+
+Accedemos al servicio phpLDAPmin para crear un usuario (recordar poner el usuario: *cn=admin,dc=minube,dc=com* y contraseña: *1234*).
+
+![test-LDAP1](img/test-LDAP1.png)
+
+Creamos un grupo possix dentro del contenedor "*dc=minube,dc=com*" llamado **personal**.
+
+![test-LDAP2](img/test-LDAP2.png)
+
+Y dentro de este grupo, creamo al usuario con nombre *Juan Perez* (**jperez**) con contraseña "*jperez*".
+
+![test-LDAP3](img/test-LDAP3.png)
+
+El resultado final debe parecerse a la siguiente imagen.
+
+![test-LDAP4](img/test-LDAP4.png)
+
+### 4.2. Probando Owncloud - Minube
+
+Antes de poder entrar con el usuario creado en el punto anterior, debemos activar dentro de owncloud la opción de **LDAP - Integration**. Para ello accedemos con la cuenta de administrador de owncloud (*admin/1234*).
+
+![test-oc1](img/test-oc1.png)
+
+Seguidamente tenemos que vincular el servicio de ``OpenLDAP`` con **owncloud**, indicando el nombre del servicio, puerto y usuario administrador como se indica en la siguiente imagen. Una vez hehco esto podemos acceder con cualquier usuario creado en OpenLDAP.
+
+![test-oc2](img/test-oc2.png)
+
+Si nos logueamos con el usuario *jperez* podemos acceder al servicio minube (owncloud) donde podemos subir archivos.
+
+![test-oc3](img/test-oc3.png)
+
+![test-oc4](img/test-oc4.png)
+
+### Probando la replicación de la base de datos MariaDB
+
+En este último punto, probaremos si se ha replicado la base de datos del maestro al esclavo.
+
+Para comprobarlo necesitamos acceder a los contenedores por medio de una terminal, o dos en el caso de la siguiente imagen.
+
+![test-db](img/test-db1.png)
+
+Como se puede observar, la base de datos que hemos definido anteriormente llamada "**minube**", se ha replicado correctamente del maestro al esclavo.
+
 ## 5. Conclusiones
+
+
 
 ## 6. Referencias
 
-#### Guión de prácticas
-https://github.com/ccano/cc2223/blob/main/practice1/README.md
+[1] Guión de prácticas, (https://github.com/ccano/cc2223/blob/main/practice1/README.md)
 
-
-https://mariadb.com/kb/en/setting-up-replication/
-
-
-https://www.openldap.org/
+[2] Replicación maestro-esclavo MariaDB, (https://mariadb.com/kb/en/setting-up-replication/)
