@@ -70,7 +70,7 @@ Contenido del fichero [init_master.sql](sqlmaster/init_master.sql).
 
 ![conf-mariadb-master2](img/conf-mariadb-master2.png)
 
-#### 3.2.1. Esclavo
+#### 3.2.2. Esclavo
 
 Al igual que el anterior este servicio cuenta con un fichero de configuración ([init_slave.sql](sqlslave/init_slave.sql)), donde se le indica la base de datos que debe replicar. También tiene vinculado su propio volumen ``mysql_slave``.
 
@@ -104,7 +104,7 @@ Contenido de las variables de entorno para ``OpenLDAP`` ([.env](.env)). En este 
 
 ![conf-ldap2](img/conf-ldap2.png)
 
-#### phpLADPmin
+#### 3.4.2. phpLADPmin
 
 En la configuración del servicio ``phpLDAPmin`` hay que cambiar el puerto de acceso, porque el que usa por defecto esta siendo ocupado por el servicio ``haproxy``. También hay configurarlo para que se inicie después de haber activado el directorio ``OpenLDAP``.
 
@@ -167,7 +167,7 @@ Si nos logueamos con el usuario *jperez* podemos acceder al servicio minube (own
 
 ![test-oc4](img/test-oc4.png)
 
-### Probando la replicación de la base de datos MariaDB
+### 4.3. Probando la replicación de la base de datos MariaDB
 
 En este último punto, probaremos si se ha replicado la base de datos del maestro al esclavo.
 
